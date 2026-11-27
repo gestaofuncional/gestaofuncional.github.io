@@ -324,3 +324,20 @@ footer {
     color: #4ade80;
 }
 
+
+/* Orientação para o primeiro acesso */
+.aviso-primeiro-acesso {
+    margin: -10px 0 18px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    border-radius: 9px;
+    background: rgba(255, 193, 7, 0.08);
+    color: #ffd76a;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.aviso-primeiro-acesso strong {
+    color: var(--text);
+}
