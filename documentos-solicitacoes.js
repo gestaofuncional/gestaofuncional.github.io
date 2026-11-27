@@ -3,7 +3,6 @@ import { supabase } from "./supabase.js";
 import { confirmar, sucesso, erro, Alerta } from "./alertas.js";
 
 const BUCKET="documentos-solicitacoes";
-const LIMITE=10*1024*1024;
 const TIPOS={abonada:"Falta abonada",justificativa:"Justificativa"};
 const ESTADOS={pendente:"Pendente",em_analise:"Em análise",aprovado:"Aprovado",recusado:"Recusado"};
 const $=id=>document.getElementById(id);
@@ -12,11 +11,6 @@ const fmt=d=>d?d.split("-").reverse().join("/"):"—";
 const fmtHora=d=>new Date(d).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"});
 const btn=(texto,acao,classe="sg-btn sg-btn-secondary")=>{const b=el("button",classe,texto);b.type="button";b.onclick=acao;return b;};
 
-async function validarPDF(f){
-    if(!f||!f.name.toLowerCase().endsWith(".pdf")||!f.size||f.size>LIMITE)throw Error("Selecione um PDF de até 10 MB.");
-    const inicio=new TextDecoder().decode(await f.slice(0,1024).arrayBuffer());
-    if(!inicio.includes("%PDF-"))throw Error("O arquivo selecionado não parece ser um PDF válido.");
-}
 async function baixar(r,b){
     if(b.disabled)return;b.disabled=true;
     try{
@@ -88,37 +82,14 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
     return carregar;
 }
 
-export async function iniciarEnvioDocumento(tipo,campoData){
-    const raiz=$("docEnvio");if(!raiz)return;
-    const {data:{user},error}=await supabase.auth.getUser();
-    if(error||!user){raiz.textContent="Sessão inválida. Entre novamente.";return;}
-    const campo=$("docData"),arquivo=$("docArquivo"),enviar=$("docEnviar"),form=$("docForm"),link=$("docLinkAssinatura");
-    campo.value=$(campoData).value||"";
-    $(campoData).addEventListener("input",()=>{if(!enviar.disabled)campo.value=$(campoData).value;});
-    const atualizar=listaDocumentos({raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),carregarConsulta:q=>q.eq("usuario_id",user.id).eq("tipo",tipo)});
+export async function iniciarMeusDocumentos(tipo,usuarioId){
+    const atualizar=listaDocumentos({
+        raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),
+        carregarConsulta:q=>q.eq("usuario_id",usuarioId).eq("tipo",tipo),
+    });
     $("docAtualizar").onclick=()=>atualizar(true);
-    let ocupado=false;
-    form.onsubmit=async e=>{
-        e.preventDefault();if(ocupado)return;
-        const data=campo.value,f=arquivo.files[0],assinatura=link.value.trim();let path=null;ocupado=true;enviar.disabled=true;campo.disabled=true;arquivo.disabled=true;link.disabled=true;
-        try{
-            if(!data)throw Error("Informe a data a que o PDF se refere.");
-            await validarPDF(f);
-            if(assinatura&&!linkAssinaturaValido(assinatura))throw Error("Cole o link individual de compartilhamento do Assinador Digital oficial.");
-            if(!await confirmar("Enviar documento para análise?",TIPOS[tipo]+" — "+fmt(data)))return;
-            path=user.id+"/"+crypto.randomUUID()+".pdf";
-            const {error:uploadError}=await supabase.storage.from(BUCKET).upload(path,f,{contentType:"application/pdf",upsert:false});
-            if(uploadError)throw uploadError;
-            const {error:rpcError}=await supabase.rpc("enviar_documento_com_assinatura",{p_tipo:tipo,p_data:data,p_arquivo:path,p_link:assinatura||null});
-            if(rpcError)throw rpcError;
-            path=null;arquivo.value="";link.value="";await sucesso("PDF enviado para análise.");await atualizar(true);
-        }catch(e){
-            if(path){try{await supabase.storage.from(BUCKET).remove([path]);}catch{}}
-            await erro(e.message||"Não foi possível enviar o documento.");
-            await atualizar(true);
-        }finally{ocupado=false;enviar.disabled=false;campo.disabled=false;arquivo.disabled=false;link.disabled=false;}
-    };
-    raiz.hidden=false;await atualizar();
+    $("docHistorico").hidden=false;
+    await atualizar();
 }
 export async function iniciarAdministracaoDocumentos(){
     const atualizar=listaDocumentos({raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),admin:true,carregarConsulta:q=>{
