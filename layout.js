@@ -265,7 +265,7 @@ export async function montarLayout({
 
                 <div class="sg-marca-icone">
 
-                    <img src="https://www2.praiagrande.sp.gov.br/img/jpg/brasao_prefeitura.png" alt="Brasão de Praia Grande" width="34" height="34" style="width:80%;height:80%;object-fit:contain;display:block" referrerpolicy="no-referrer">
+                    <img src="./imagens/brasao.png" alt="Brasão de Praia Grande" width="34" height="34" style="width:80%;height:80%;object-fit:contain;display:block" referrerpolicy="no-referrer">
 
                 </div>
 
