@@ -349,6 +349,10 @@
                     <div class="doc-assinatura"><h3>Assinatura digital (opcional)</h3><p class="doc-muted">Baixe o PDF gerado, abra o assinador oficial, adicione o arquivo e prepare a assinatura. Use o botão de compartilhar do assinador e copie o link individual do documento. Não compartilhe links com pessoas não autorizadas.</p><div class="doc-acoes"><a href="https://assinadordigitalexterno.praiagrande.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="sg-btn sg-btn-secondary">Abrir Assinador Digital</a></div><label for="docLinkAssinatura">Link de compartilhamento (opcional)<input id="docLinkAssinatura" type="url" class="sg-input" maxlength="250" placeholder="https://assinadordigitalexterno.../assinar/..."></label><p class="doc-muted">O link não comprova que o documento foi assinado. Se necessário, baixe o PDF original assinado antes de enviá-lo. Documentos sem assinatura podem expirar após 15 dias.</p></div>
                     <label for="docArquivo">Selecionar arquivo PDF<input type="file" id="docArquivo" class="sg-input" accept=".pdf,application/pdf" required></label>
                     <p class="doc-muted">Somente PDF, até 10 MB. O arquivo ficará disponível para você e para a administração autorizada.</p>
+                    <div id="docPreparoAutomatico" hidden>
+                        <label for="docPrepararAssinatura"><input type="checkbox" id="docPrepararAssinatura" aria-describedby="docCompartilhamento"> Preparar assinatura automaticamente no Assinador Digital</label>
+                        <p class="doc-muted" id="docCompartilhamento">Marque apenas para PDFs cujo compartilhamento foi autorizado. Quem tiver o link poderá abrir o PDF sem entrar no portal. Para documentos confidenciais, envie apenas para análise interna.</p>
+                    </div>
                     <div class="doc-acoes"><button type="submit" id="docEnviar" class="sg-btn sg-btn-success">Enviar para análise</button></div>
                 </form>
                 <hr style="border:0;border-top:1px solid var(--layout-border);margin:24px 0">
@@ -364,7 +368,7 @@
 
     <script
         type="module"
-        src="./justificativa.js?v=3">
+        src="./justificativa.js?v=4">
     </script>
 
 </body>

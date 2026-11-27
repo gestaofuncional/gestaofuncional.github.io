@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { aviso, erro, sucesso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=2';
+import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=3';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function renumerar(){document.querySelectorAll('#listaHorarios .just-horario').forEach((l,i)=>{l.querySelector('label').textContent=`Horário ${i+1} *`;l.querySelector('button').hidden=i===0;});}
@@ -28,7 +28,7 @@ export function obterDadosJustificativa(){
 async function gerar(e){e.preventDefault();if(ocupado)return;let controles=[];try{
     const dados=obterDadosJustificativa();ocupado=true;controles=[...$('formJustificativa').querySelectorAll('input,textarea,button')];controles.forEach(c=>c.disabled=true);limparPdf();carregando('Gerando PDF...');
     const {data,error}=await supabase.rpc('acesso_autorizado');if(error||data!==true)throw new Error('Sessão inválida. Entre novamente.');
-    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'));fecharAlerta();await sucesso('PDF pronto para baixar ou imprimir.');
+    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'),dados.data);fecharAlerta();await sucesso('PDF pronto para baixar ou imprimir.');
 }catch(e){fecharAlerta();await erro(e.message||'Não foi possível gerar o PDF.');}finally{ocupado=false;controles.forEach(c=>c.disabled=false);}}
 async function iniciar(){try{
     if(!await montarLayout({titulo:'Justificativa',pagina:'justificativa',somenteAdmin:false}))return;
@@ -38,6 +38,6 @@ async function iniciar(){try{
     $('data').value=hoje();adicionarHorario(false);contador();
     $('adicionarHorario').onclick=()=>adicionarHorario();$('motivo').addEventListener('input',contador);$('anexo').onchange=selecionarAnexo;$('removerAnexo').onclick=removerAnexo;$('limpar').onclick=limpar;
     $('formJustificativa').addEventListener('input',limparPdf);$('formJustificativa').addEventListener('submit',gerar);$('gerarPdf').type='submit';$('gerarPdf').disabled=false;
-    import("./documentos-solicitacoes.js?v=2").then(m=>m.iniciarEnvioDocumento("justificativa","data")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
+    import("./documentos-solicitacoes.js?v=3").then(m=>m.iniciarEnvioDocumento("justificativa","data")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
 }catch(e){$('app').hidden=true;$('carregando').hidden=false;$('carregando').textContent=e.message;}}
 iniciar();

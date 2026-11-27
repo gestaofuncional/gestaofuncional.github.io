@@ -76,7 +76,7 @@ export async function gerarPdfJustificativa(d){
     return doc.save();
 }
 export function criarUrlPdf(bytes){return URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));}
-export function exibirPdf(bytes,nome,form){
+export function exibirPdf(bytes,nome,form,dataReferencia){
     const antigo=document.getElementById('resultadoPdf');
     if(antigo){URL.revokeObjectURL(antigo.dataset.url);antigo.remove();}
     const url=criarUrlPdf(bytes), caixa=document.createElement('div');
@@ -85,7 +85,24 @@ export function exibirPdf(bytes,nome,form){
     const download=document.createElement('a');download.href=url;download.download=nome;download.className='sg-btn';download.textContent='Baixar PDF';
     const abrir=document.createElement('a');abrir.href=url;abrir.target='_blank';abrir.rel='noopener noreferrer';abrir.className='sg-btn sg-btn-secondary';abrir.textContent='Abrir PDF para imprimir';
     const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Baixar PDF e abrir assinador';assinar.onclick=()=>{download.click();abrirAssinador();};
+    caixa.append(download,abrir,assinar);
+    const envio=document.getElementById('docEnvio'), arquivo=document.getElementById('docArquivo'), data=document.getElementById('docData');
+    if(envio&&arquivo&&data&&dataReferencia&&typeof DataTransfer==='function'){
+        const usar=document.createElement('button');
+        usar.type='button';usar.className='sg-btn sg-btn-secondary';usar.textContent='Usar PDF no envio';
+        usar.onclick=()=>{
+            if(envio.hidden||arquivo.disabled)return;
+            const selecao=new DataTransfer();
+            selecao.items.add(new File([bytes],nome,{type:'application/pdf'}));
+            arquivo.files=selecao.files;
+            data.value=dataReferencia;
+            arquivo.dispatchEvent(new Event('change'));
+            arquivo.dataset.dataGerada=dataReferencia;
+            arquivo.focus();
+        };
+        caixa.append(usar);
+    }
     const orientacao=document.createElement('p');orientacao.className='doc-muted';orientacao.style.flexBasis='100%';orientacao.textContent='No assinador, adicione o PDF baixado, prepare a assinatura e copie o link de compartilhamento. Depois, envie o PDF final e o link para análise.';
-    caixa.append(download,abrir,assinar,orientacao);form.append(caixa);
+    caixa.append(orientacao);form.append(caixa);
 }
 export function limparPdf(){const el=document.getElementById('resultadoPdf');if(el){URL.revokeObjectURL(el.dataset.url);el.remove();}}

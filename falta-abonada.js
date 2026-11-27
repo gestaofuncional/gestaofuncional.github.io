@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { confirmar, sucesso, erro, aviso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js?v=2';
+import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js?v=3';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function datas(){ $('dataDocumento').value=hoje();$('dataAnalise').value=hoje(); }
@@ -30,7 +30,7 @@ async function executar(pdf){
         // Valida o modelo antes de registrar, para não gravar se a geração inicial falhar.
         if(pdf)await gerarPdfAbonada({nome:perfil.nome,registro:perfil.rf,cargo:perfil.cargo,dataAbonada:data,dataDocumento:hoje(),dataAnalise:hoje()});
         const r=await salvar(data);
-        if(pdf){const bytes=await gerarPdfAbonada(dadosRegistro(r));exibirPdf(bytes,`Falta_Abonada_${data}_${r.registro}.pdf`,$('formAbonada'));}
+        if(pdf){const bytes=await gerarPdfAbonada(dadosRegistro(r));exibirPdf(bytes,`Falta_Abonada_${data}_${r.registro}.pdf`,$('formAbonada'),data);}
         fecharAlerta();await sucesso(pdf?'PDF pronto para baixar ou imprimir.':'Falta abonada registrada.');
     }catch(e){fecharAlerta();await erro(e.message||'Não foi possível concluir.');}finally{bloquear(false);}
 }
@@ -41,6 +41,6 @@ async function iniciar(){try{
     $('gerarPdf').type='button';$('gerarPdf').addEventListener('click',()=>executar(true));$('gerarPdf').disabled=false;
     $('limpar').addEventListener('click',()=>{if(!ocupado){$('dataAbonada').value='';datas();limparPdf();}});
     $('dataAbonada').addEventListener('input',limparPdf);
-    import("./documentos-solicitacoes.js?v=2").then(m=>m.iniciarEnvioDocumento("abonada","dataAbonada")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
+    import("./documentos-solicitacoes.js?v=3").then(m=>m.iniciarEnvioDocumento("abonada","dataAbonada")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
 }catch(e){$('app').hidden=true;$('carregando').hidden=false;$('carregando').textContent=e.message;}}
 iniciar();

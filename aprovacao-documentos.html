@@ -7,6 +7,6 @@
 <button type="button" id="docAtualizar" class="sg-btn sg-btn-secondary">Atualizar</button><p id="docStatus" class="doc-muted" role="status"></p><div id="docLista"></div><div class="doc-acoes"><button id="docAnterior" type="button" class="sg-btn sg-btn-secondary" disabled>Anterior</button><button id="docProxima" type="button" class="sg-btn sg-btn-secondary" disabled>Próxima</button></div></section></div>
 <script type="module">
 import {montarLayout} from "./layout.js";
-import {iniciarAdministracaoDocumentos} from "./documentos-solicitacoes.js?v=2";
+import {iniciarAdministracaoDocumentos} from "./documentos-solicitacoes.js?v=3";
 try{const perfil=await montarLayout({titulo:"Aprovação de documentos",pagina:"aprovacao-documentos",somenteAdmin:true});if(perfil)await iniciarAdministracaoDocumentos();}catch(e){document.getElementById("app").hidden=true;const c=document.getElementById("carregando");c.hidden=false;c.textContent=e.message;}
 </script></body></html>
