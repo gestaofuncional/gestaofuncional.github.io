@@ -76,13 +76,20 @@ export async function gerarPdfJustificativa(d){
     await anexar(doc,d.anexo);
     return doc.save();
 }
-async function enviarParaAnalise(pdf, botao, envio) {
-    if (botao.disabled) return;
+async function enviarParaAnalise(campo, botao, envio) {
+    const arquivo = campo.files[0];
+    if (botao.disabled || !arquivo) return;
     botao.disabled = true;
+    campo.disabled = true;
     let enviado = false;
     try {
-        if (pdf.size > 10 * 1024 * 1024) {
-            await erro('O PDF deve ter até 10 MB para envio ao Assinador Digital.');
+        if (!arquivo.size || arquivo.size > 10 * 1024 * 1024 ||
+            !arquivo.name.toLowerCase().endsWith('.pdf')) {
+            await erro('Selecione um PDF assinado de até 10 MB.');
+            return;
+        }
+        if (!(await arquivo.slice(0, 1024).text()).includes('%PDF-')) {
+            await erro('O arquivo selecionado não é um PDF válido.');
             return;
         }
         if (!envio.link && !await confirmar(
@@ -91,6 +98,7 @@ async function enviarParaAnalise(pdf, botao, envio) {
         )) return;
 
         carregando(envio.link ? 'Salvando o documento para análise...' : 'Preparando o PDF e enviando para análise...');
+        const pdf = arquivo.slice(0, arquivo.size, 'application/pdf');
         await enviarDocumentoParaAnalise(pdf, envio).finally(fecharAlerta);
 
         enviado = true;
@@ -100,6 +108,7 @@ async function enviarParaAnalise(pdf, botao, envio) {
         await erro(e.message || 'Não foi possível enviar o PDF para análise.');
     } finally {
         botao.disabled = enviado;
+        campo.disabled = enviado;
     }
 }
 
@@ -112,8 +121,37 @@ export function exibirPdf(bytes,nome,form,documento){
     caixa.style.cssText='display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;';
     const download=document.createElement('a');download.href=url;download.download=nome;download.className='sg-btn';download.textContent='Baixar PDF';
     const abrir=document.createElement('a');abrir.href=url;abrir.target='_blank';abrir.rel='noopener noreferrer';abrir.className='sg-btn sg-btn-secondary';abrir.textContent='Abrir PDF para imprimir';
-    const envio={...documento};
-    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Enviar para análise';assinar.onclick=()=>enviarParaAnalise(pdf,assinar,envio);
-    caixa.append(download,abrir,assinar);form.append(caixa);
+
+    const retorno = document.createElement('div');
+    retorno.style.flexBasis = '100%';
+    const rotulo = document.createElement('label');
+    rotulo.htmlFor = 'pdfAssinado';
+    rotulo.textContent = 'Anexar PDF assinado';
+    const campo = document.createElement('input');
+    campo.id = 'pdfAssinado';
+    campo.type = 'file';
+    campo.accept = '.pdf,application/pdf';
+    campo.className = 'sg-input';
+    campo.setAttribute('aria-describedby', 'orientacaoPdfAssinado');
+    const orientacao = document.createElement('p');
+    orientacao.id = 'orientacaoPdfAssinado';
+    orientacao.className = 'doc-muted';
+    orientacao.textContent = 'Baixe o PDF, assine e anexe a versão assinada (até 10 MB).';
+    retorno.append(rotulo, campo, orientacao);
+
+    const enviar = document.createElement('button');
+    enviar.type = 'button';
+    enviar.className = 'sg-btn sg-btn-success';
+    enviar.textContent = 'Enviar para análise';
+    enviar.disabled = true;
+
+    let envio = {...documento};
+    campo.onchange = () => {
+        envio = {...documento};
+        enviar.disabled = !campo.files.length;
+    };
+    enviar.onclick = () => enviarParaAnalise(campo, enviar, envio);
+    caixa.append(download, abrir, retorno, enviar);
+    form.append(caixa);
 }
 export function limparPdf(){const el=document.getElementById('resultadoPdf');if(el){URL.revokeObjectURL(el.dataset.url);el.remove();}}

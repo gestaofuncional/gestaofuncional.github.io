@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { confirmar, sucesso, erro, aviso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js?v=5';
+import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js?v=6';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function datas(){ $('dataDocumento').value=hoje();$('dataAnalise').value=hoje(); }
@@ -31,7 +31,7 @@ async function executar(pdf){
         if(pdf)await gerarPdfAbonada({nome:perfil.nome,registro:perfil.rf,cargo:perfil.cargo,dataAbonada:data,dataDocumento:hoje(),dataAnalise:hoje()});
         const r=await salvar(data);
         if(pdf){const bytes=await gerarPdfAbonada(dadosRegistro(r));exibirPdf(bytes,`Falta_Abonada_${data}_${r.registro}.pdf`,$('formAbonada'),{tipo:'abonada',data:r.data_abonada,usuarioId:perfil.id});}
-        fecharAlerta();await sucesso(pdf?'PDF pronto para baixar, imprimir ou enviar ao Assinador Digital.':'Falta abonada registrada.');
+        fecharAlerta();await sucesso(pdf?'Baixe o PDF, assine e anexe a versão assinada para enviar.':'Falta abonada registrada.');
     }catch(e){fecharAlerta();await erro(e.message||'Não foi possível concluir.');}finally{bloquear(false);}
 }
 async function iniciar(){try{
