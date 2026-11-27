@@ -1,4 +1,5 @@
-import { abrirAssinador } from "./assinatura-digital.js";
+import { supabase } from './supabase.js';
+import { confirmar, sucesso, erro, carregando, fecharAlerta } from './alertas.js';
 import { PDFDocument, StandardFonts, rgb } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 export function hoje() {
@@ -75,17 +76,51 @@ export async function gerarPdfJustificativa(d){
     await anexar(doc,d.anexo);
     return doc.save();
 }
-export function criarUrlPdf(bytes){return URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));}
+async function prepararAssinatura(pdf, botao) {
+    if (botao.disabled) return;
+    botao.disabled = true;
+    let preparado = false;
+    try {
+        if (pdf.size > 10 * 1024 * 1024) {
+            await erro('O PDF deve ter até 10 MB para envio ao Assinador Digital.');
+            return;
+        }
+        const autorizado = await confirmar(
+            'Enviar PDF ao Assinador Digital?',
+            'Quem tiver o link poderá abrir o PDF. Confirme apenas se o documento puder ser compartilhado dessa forma.',
+        );
+        if (!autorizado) return;
+
+        carregando('Preparando o PDF no Assinador Digital...');
+        const { data, error } = await supabase.functions.invoke('preparar-assinatura', {
+            body: pdf,
+            headers: {
+                'Content-Type': 'application/pdf',
+                'X-Compartilhamento-Autorizado': 'true',
+            },
+        }).finally(fecharAlerta);
+        if (error || data?.preparado !== true) throw new Error();
+
+        preparado = true;
+        botao.textContent = 'Preparado para assinatura';
+        await sucesso('PDF preparado para assinatura no Assinador Digital.');
+    } catch {
+        await erro('Não foi possível confirmar o preparo do PDF no Assinador Digital.');
+    } finally {
+        botao.disabled = preparado;
+    }
+}
+
 export function exibirPdf(bytes,nome,form){
     const antigo=document.getElementById('resultadoPdf');
     if(antigo){URL.revokeObjectURL(antigo.dataset.url);antigo.remove();}
-    const url=criarUrlPdf(bytes), caixa=document.createElement('div');
+    const pdf=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(pdf), caixa=document.createElement('div');
     caixa.id='resultadoPdf';caixa.dataset.url=url;caixa.className='form-acoes';
     caixa.style.cssText='display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;';
     const download=document.createElement('a');download.href=url;download.download=nome;download.className='sg-btn';download.textContent='Baixar PDF';
     const abrir=document.createElement('a');abrir.href=url;abrir.target='_blank';abrir.rel='noopener noreferrer';abrir.className='sg-btn sg-btn-secondary';abrir.textContent='Abrir PDF para imprimir';
-    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Enviar para análise';assinar.onclick=()=>{download.click();abrirAssinador();};
-    const orientacao=document.createElement('p');orientacao.className='doc-muted';orientacao.style.flexBasis='100%';orientacao.textContent='Adicione o PDF baixado no Assinador Digital e clique em Preparar Assinatura.';
-    caixa.append(download,abrir,assinar,orientacao);form.append(caixa);
+    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Enviar para análise';assinar.onclick=()=>prepararAssinatura(pdf,assinar);
+    caixa.append(download,abrir,assinar);form.append(caixa);
 }
 export function limparPdf(){const el=document.getElementById('resultadoPdf');if(el){URL.revokeObjectURL(el.dataset.url);el.remove();}}

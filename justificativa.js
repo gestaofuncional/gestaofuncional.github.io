@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { aviso, erro, sucesso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=3';
+import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=4';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function renumerar(){document.querySelectorAll('#listaHorarios .just-horario').forEach((l,i)=>{l.querySelector('label').textContent=`Horário ${i+1} *`;l.querySelector('button').hidden=i===0;});}
@@ -28,7 +28,7 @@ export function obterDadosJustificativa(){
 async function gerar(e){e.preventDefault();if(ocupado)return;let controles=[];try{
     const dados=obterDadosJustificativa();ocupado=true;controles=[...$('formJustificativa').querySelectorAll('input,textarea,button')];controles.forEach(c=>c.disabled=true);limparPdf();carregando('Gerando PDF...');
     const {data,error}=await supabase.rpc('acesso_autorizado');if(error||data!==true)throw new Error('Sessão inválida. Entre novamente.');
-    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'));fecharAlerta();await sucesso('PDF pronto para baixar ou imprimir.');
+    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'));fecharAlerta();await sucesso('PDF pronto para baixar, imprimir ou enviar ao Assinador Digital.');
 }catch(e){fecharAlerta();await erro(e.message||'Não foi possível gerar o PDF.');}finally{ocupado=false;controles.forEach(c=>c.disabled=false);}}
 async function iniciar(){try{
     if(!await montarLayout({titulo:'Justificativa',pagina:'justificativa',somenteAdmin:false}))return;
