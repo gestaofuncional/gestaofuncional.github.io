@@ -38,7 +38,7 @@ function painelLinkAssinatura(url) {
     return painel;
 }
 
-function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=false}){
+function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=false,podeRemover=false}){
     let pagina=0,versao=0,ocupado=false;const tamanho=30;
     async function carregar(reset=false){
         if(reset)pagina=0;
@@ -80,6 +80,10 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                         acoes.append(b);
                     }
                 }
+                if (podeRemover) {
+                    const removerBtn = btn("Remover solicitação", () => remover(r, removerBtn), "sg-btn sg-btn-danger");
+                    acoes.append(removerBtn);
+                }
                 card.append(acoes);raiz.append(card);
             }
         }catch(e){if(v===versao){raiz.replaceChildren();status.textContent="Não foi possível consultar: "+e.message;}}
@@ -105,6 +109,36 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
             if(error)throw error;
             await sucesso("Situação atualizada. O funcionário receberá uma notificação.");await carregar();
         }catch(e){await erro(e.message);}finally{ocupado=false;b.disabled=false;}
+    }
+    async function remover(r, botao) {
+        if (!podeRemover || ocupado) return;
+        ocupado = true;
+        botao.disabled = true;
+        try {
+            const confirmado = await confirmar(
+                "Remover solicitação?",
+                `A remoção de ${TIPOS[r.tipo].toLowerCase()} de ${fmt(r.data_referencia)} para ${r.nome} é definitiva no portal. O PDF armazenado e o link do Assinador são preservados.`,
+                true,
+            );
+            if (!confirmado) return;
+
+            const { data, error } = await supabase.from("solicitacoes_documentos")
+                .delete().eq("id", r.id).eq("atualizado_em", r.atualizado_em).select("id").maybeSingle();
+            if (error) throw error;
+            if (!data) {
+                await erro("A solicitação mudou ou está indisponível para remoção. A lista será atualizada.");
+                await carregar();
+                return;
+            }
+
+            await carregar();
+            await sucesso("Solicitação removida.");
+        } catch (e) {
+            await erro(e.message || "Não foi possível remover a solicitação.");
+        } finally {
+            ocupado = false;
+            botao.disabled = false;
+        }
     }
     anterior.onclick=()=>{pagina=Math.max(0,pagina-1);carregar();};proxima.onclick=()=>{pagina++;carregar();};
     return carregar;
@@ -178,8 +212,8 @@ export async function iniciarMeusDocumentos(tipo,usuarioId){
     $("docHistorico").hidden=false;
     await atualizar();
 }
-export async function iniciarAdministracaoDocumentos(){
-    const atualizar=listaDocumentos({raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),admin:true,carregarConsulta:q=>{
+export async function iniciarAdministracaoDocumentos(perfil){
+    const atualizar=listaDocumentos({raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),admin:true,podeRemover:perfil?.perfil==="superadmin",carregarConsulta:q=>{
         const tipo=$("docTipo").value,status=$("docFiltro").value;
         if(tipo)q=q.eq("tipo",tipo);
         if(status==="pendentes")q=q.in("status",["pendente","em_analise"]);else if(status)q=q.eq("status",status);
