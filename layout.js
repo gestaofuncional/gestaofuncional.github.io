@@ -401,6 +401,7 @@ export async function montarLayout({
     // MENU PRINCIPAL
 
     const menuPrincipal = [
+        {texto:"Agenda institucional",href:"agenda.html",simbolo:"ferias",pagina:"agenda"},
         {texto:"Notificações",href:"notificacoes.html",simbolo:"notificacoes",pagina:"notificacoes"},
 
         {
@@ -480,6 +481,8 @@ export async function montarLayout({
     // MENU ADMINISTRATIVO
 
     const menuAdmin = [
+        {texto:"Aprovação em massa",href:"aprovacao-lote.html",simbolo:"justificativa",pagina:"aprovacao-lote"},
+        {texto:"Central de afastamentos",href:"afastamentos.html",simbolo:"historico",pagina:"afastamentos"},
         {texto:"Aprovação de documentos",href:"aprovacao-documentos.html",simbolo:"justificativa",pagina:"aprovacao-documentos"},
         {texto:"Calendário de férias",href:"calendario-ferias.html",simbolo:"ferias",pagina:"calendario-ferias"},
         {texto:"Painel administrativo",href:"painel-admin.html",simbolo:"inicio",pagina:"painel-admin"},
