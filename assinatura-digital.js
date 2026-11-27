@@ -7,10 +7,28 @@ export function linkAssinaturaValido(valor){
 export function abrirAssinador(){
     window.open(ASSINADOR,"_blank","noopener,noreferrer");
 }
+export function botaoCopiarLink(url, aoFalhar) {
+    if (!linkAssinaturaValido(url)) return null;
+    const link = url.trim();
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "sg-btn sg-btn-secondary";
+    botao.textContent = "Copiar link";
+    botao.onclick = async () => {
+        try {
+            await navigator.clipboard.writeText(link);
+            botao.textContent = "Link copiado";
+            setTimeout(() => { botao.textContent = "Copiar link"; }, 2000);
+        } catch {
+            await aoFalhar();
+        }
+    };
+    return botao;
+}
+
 export function acoesAssinatura(url){
-    if(!linkAssinaturaValido(url))return [];
+    const copiar = botaoCopiarLink(url, () => window.prompt("Copie o link de assinatura. Compartilhe somente com pessoas autorizadas.", url));
+    if (!copiar) return [];
     const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";a.referrerPolicy="no-referrer";a.className="sg-btn sg-btn-secondary";a.textContent="Abrir link de assinatura";
-    const b=document.createElement("button");b.type="button";b.className="sg-btn sg-btn-secondary";b.textContent="Copiar link";
-    b.onclick=async()=>{try{await navigator.clipboard.writeText(url);b.textContent="Link copiado";setTimeout(()=>{b.textContent="Copiar link";},2000);}catch{window.prompt("Copie o link de assinatura. Compartilhe somente com pessoas autorizadas.",url);}};
-    return [a,b];
+    return [a,copiar];
 }

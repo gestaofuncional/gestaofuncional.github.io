@@ -1,4 +1,4 @@
-import { linkAssinaturaValido, acoesAssinatura } from "./assinatura-digital.js";
+import { linkAssinaturaValido, acoesAssinatura, botaoCopiarLink } from "./assinatura-digital.js?v=2";
 import { supabase } from "./supabase.js";
 import { confirmar, sucesso, erro, Alerta } from "./alertas.js";
 
@@ -21,21 +21,6 @@ async function baixar(r,b){
         const url=URL.createObjectURL(new Blob([data],{type:"application/pdf"}));
         const a=el("a");a.href=url;a.download=(r.tipo==="abonada"?"Falta_Abonada":"Justificativa")+"_"+r.data_referencia+".pdf";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
     }catch(e){await erro(e.message);}finally{b.disabled=false;}
-}
-
-function painelLinkAssinatura(url) {
-    const [abrir, copiar] = acoesAssinatura(url);
-    if (!abrir) return null;
-
-    abrir.className = "doc-compartilhamento-endereco";
-    abrir.setAttribute("aria-label", "Abrir link de assinatura");
-    abrir.textContent = url.trim();
-
-    const painel = el("div", "doc-compartilhamento");
-    const linha = el("div", "doc-compartilhamento-linha");
-    linha.append(abrir, copiar);
-    painel.append(el("p", "doc-compartilhamento-titulo", "Link de assinatura"), linha);
-    return painel;
 }
 
 function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=false,podeRemover=false}){
@@ -64,8 +49,8 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                 const baixarBtn = btn("Baixar PDF", () => baixar(r, baixarBtn));
                 acoes.append(baixarBtn);
                 if (admin) {
-                    const assinatura = painelLinkAssinatura(r.assinatura_link);
-                    if (assinatura) card.append(assinatura);
+                    const copiar = botaoCopiarLink(r.assinatura_link, () => erro("O navegador não permitiu copiar o link."));
+                    if (copiar) acoes.append(copiar);
                 } else {
                     acoes.append(...acoesAssinatura(r.assinatura_link));
                     if (aguardandoDecisao) {
