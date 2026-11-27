@@ -9,7 +9,7 @@
     <title>Início | Sistema de Gestão</title>
 
     <link rel="stylesheet" href="layout.css">
-    <link rel="stylesheet" href="modulos-gestao.css">
+    <link rel="stylesheet" href="modulos-gestao.css?v=2">
 
     <style>
         .perfil-header {
@@ -407,7 +407,7 @@ async function carregarAvisosDashboard() {
 
                 if (!perfil) return;
                 await carregarAvisosDashboard();
-                import("./dashboard-pessoal.js").then(m=>m.carregarDashboardPessoal(perfil)).catch(()=>{$("resumoPessoal").textContent="Não foi possível carregar o resumo funcional.";});
+                import("./dashboard-pessoal.js?v=2").then(m=>m.carregarDashboardPessoal(perfil)).catch(()=>{$("resumoPessoal").textContent="Não foi possível carregar o resumo funcional.";});
 
                 const nome =
                     perfil.nome || "Usuário";
