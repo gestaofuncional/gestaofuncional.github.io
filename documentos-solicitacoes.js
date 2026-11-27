@@ -3,6 +3,8 @@ import { supabase } from "./supabase.js";
 import { confirmar, sucesso, erro, Alerta } from "./alertas.js";
 
 const BUCKET="documentos-solicitacoes";
+const ATUALIZAR_DOCUMENTOS="sg-documentos-atualizar";
+const ABONADA_JA_ENVIADA="Já existe um documento enviado para esta abonada.";
 const TIPOS={abonada:"Falta abonada",justificativa:"Justificativa"};
 const ESTADOS={pendente:"Pendente",em_analise:"Em análise",aprovado:"Aprovado",recusado:"Recusado"};
 const $=id=>document.getElementById(id);
@@ -43,7 +45,7 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                 const etiqueta=el("span","doc-status doc-"+r.status,ESTADOS[r.status]||r.status);topo.append(info,etiqueta);card.append(topo);
                 if(r.motivo_decisao)card.append(el("p","doc-motivo","Motivo: "+r.motivo_decisao));
                 const acoes=el("div","doc-acoes");const baixarBtn=btn("Baixar PDF",()=>baixar(r,baixarBtn));acoes.append(baixarBtn,...acoesAssinatura(r.assinatura_link));
-                if(r.assinatura_link)card.append(el("p","doc-muted","Link de assinatura informado pelo funcionário (não verificado)."));
+                if(admin&&r.assinatura_link)card.append(el("p","doc-muted","Confira o PDF e as assinaturas antes de aprovar."));
                 if(!admin&&["pendente","em_analise"].includes(r.status))acoes.append(btn(r.assinatura_link?"Alterar link de assinatura":"Adicionar link de assinatura",()=>vincular(r)));
                 if(admin&&["pendente","em_analise"].includes(r.status)){
                     for(const [estado,label] of [["em_analise","Analisar"],["aprovado","Aprovar"],["recusado","Recusar"]]){
@@ -82,12 +84,71 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
     return carregar;
 }
 
+export async function enviarDocumentoParaAnalise(pdf, envio) {
+    const { data: { user }, error: erroSessao } = await supabase.auth.getUser();
+    if (erroSessao || !user || user.id !== envio.usuarioId) {
+        throw new Error("Sessão inválida. Entre novamente e gere o PDF.");
+    }
+
+    if (!envio.link) {
+        if (envio.tipo === "abonada") {
+            const { data: existente, error } = await supabase.from("solicitacoes_documentos")
+                .select("id").eq("usuario_id", user.id).eq("tipo", envio.tipo)
+                .eq("data_referencia", envio.data).neq("status", "recusado").limit(1).maybeSingle();
+            if (error) throw new Error("Não foi possível verificar os documentos enviados para esta abonada.");
+            if (existente) throw new Error(ABONADA_JA_ENVIADA);
+        }
+
+        const { data, error } = await supabase.functions.invoke("preparar-assinatura", {
+            body: pdf,
+            headers: {
+                "Content-Type": "application/pdf",
+                "X-Compartilhamento-Autorizado": "true",
+            },
+        });
+        if (error || data?.preparado !== true || !linkAssinaturaValido(data.link)) {
+            throw new Error("Não foi possível confirmar o link do PDF no Assinador Digital.");
+        }
+        envio.link = data.link.trim();
+    }
+
+    envio.arquivo ??= user.id + "/" + crypto.randomUUID() + ".pdf";
+    const arquivos = supabase.storage.from(BUCKET);
+    if (!envio.armazenado) {
+        const { error } = await arquivos.upload(envio.arquivo, pdf, { contentType: "application/pdf", upsert: false });
+        if (error) {
+            // O envio anterior pode ter gravado este arquivo mesmo sem devolver uma resposta.
+            const { data: objeto } = await arquivos.info(envio.arquivo);
+            if (objeto?.size !== pdf.size || objeto.contentType !== "application/pdf") {
+                throw new Error("O PDF foi preparado. Tente novamente para salvar o arquivo no portal.");
+            }
+        }
+        envio.armazenado = true;
+    }
+
+    const { error } = await supabase.rpc("enviar_documento_com_assinatura", {
+        p_tipo: envio.tipo,
+        p_data: envio.data,
+        p_arquivo: envio.arquivo,
+        p_link: envio.link,
+    });
+    if (error?.code === "P0001" && error.message === ABONADA_JA_ENVIADA) {
+        const { error: erroLimpeza } = await arquivos.remove([envio.arquivo]);
+        if (!erroLimpeza) envio.armazenado = false;
+        throw new Error(ABONADA_JA_ENVIADA);
+    }
+    if (error) throw new Error("O PDF foi preparado. Tente novamente para concluir o envio para análise.");
+
+    window.dispatchEvent(new Event(ATUALIZAR_DOCUMENTOS));
+}
+
 export async function iniciarMeusDocumentos(tipo,usuarioId){
     const atualizar=listaDocumentos({
         raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),
         carregarConsulta:q=>q.eq("usuario_id",usuarioId).eq("tipo",tipo),
     });
     $("docAtualizar").onclick=()=>atualizar(true);
+    window.addEventListener(ATUALIZAR_DOCUMENTOS,()=>atualizar(true));
     $("docHistorico").hidden=false;
     await atualizar();
 }

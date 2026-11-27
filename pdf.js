@@ -1,5 +1,5 @@
-import { supabase } from './supabase.js';
 import { confirmar, sucesso, erro, carregando, fecharAlerta } from './alertas.js';
+import { enviarDocumentoParaAnalise } from './documentos-solicitacoes.js?v=4';
 import { PDFDocument, StandardFonts, rgb } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 export function hoje() {
@@ -76,42 +76,34 @@ export async function gerarPdfJustificativa(d){
     await anexar(doc,d.anexo);
     return doc.save();
 }
-async function prepararAssinatura(pdf, botao) {
+async function enviarParaAnalise(pdf, botao, envio) {
     if (botao.disabled) return;
     botao.disabled = true;
-    let preparado = false;
+    let enviado = false;
     try {
         if (pdf.size > 10 * 1024 * 1024) {
             await erro('O PDF deve ter até 10 MB para envio ao Assinador Digital.');
             return;
         }
-        const autorizado = await confirmar(
+        if (!envio.link && !await confirmar(
             'Enviar PDF ao Assinador Digital?',
             'Quem tiver o link poderá abrir o PDF. Confirme apenas se o documento puder ser compartilhado dessa forma.',
-        );
-        if (!autorizado) return;
+        )) return;
 
-        carregando('Preparando o PDF no Assinador Digital...');
-        const { data, error } = await supabase.functions.invoke('preparar-assinatura', {
-            body: pdf,
-            headers: {
-                'Content-Type': 'application/pdf',
-                'X-Compartilhamento-Autorizado': 'true',
-            },
-        }).finally(fecharAlerta);
-        if (error || data?.preparado !== true) throw new Error();
+        carregando(envio.link ? 'Salvando o documento para análise...' : 'Preparando o PDF e enviando para análise...');
+        await enviarDocumentoParaAnalise(pdf, envio).finally(fecharAlerta);
 
-        preparado = true;
-        botao.textContent = 'Preparado para assinatura';
-        await sucesso('PDF preparado para assinatura no Assinador Digital.');
-    } catch {
-        await erro('Não foi possível confirmar o preparo do PDF no Assinador Digital.');
+        enviado = true;
+        botao.textContent = 'Enviado para análise';
+        await sucesso('PDF enviado. O link de assinatura está disponível em Aprovação de documentos.');
+    } catch (e) {
+        await erro(e.message || 'Não foi possível enviar o PDF para análise.');
     } finally {
-        botao.disabled = preparado;
+        botao.disabled = enviado;
     }
 }
 
-export function exibirPdf(bytes,nome,form){
+export function exibirPdf(bytes,nome,form,documento){
     const antigo=document.getElementById('resultadoPdf');
     if(antigo){URL.revokeObjectURL(antigo.dataset.url);antigo.remove();}
     const pdf=new Blob([bytes],{type:'application/pdf'});
@@ -120,7 +112,8 @@ export function exibirPdf(bytes,nome,form){
     caixa.style.cssText='display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;';
     const download=document.createElement('a');download.href=url;download.download=nome;download.className='sg-btn';download.textContent='Baixar PDF';
     const abrir=document.createElement('a');abrir.href=url;abrir.target='_blank';abrir.rel='noopener noreferrer';abrir.className='sg-btn sg-btn-secondary';abrir.textContent='Abrir PDF para imprimir';
-    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Enviar para análise';assinar.onclick=()=>prepararAssinatura(pdf,assinar);
+    const envio={...documento};
+    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Enviar para análise';assinar.onclick=()=>enviarParaAnalise(pdf,assinar,envio);
     caixa.append(download,abrir,assinar);form.append(caixa);
 }
 export function limparPdf(){const el=document.getElementById('resultadoPdf');if(el){URL.revokeObjectURL(el.dataset.url);el.remove();}}

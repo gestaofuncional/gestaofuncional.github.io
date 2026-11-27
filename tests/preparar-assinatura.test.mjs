@@ -52,11 +52,11 @@ function preparar({
     return { handler, chamadas };
 }
 
-test("envia um único PDF sem credenciais e retorna somente a confirmação", async () => {
+test("envia um único PDF sem credenciais e retorna o link individual", async () => {
     const { handler, chamadas } = preparar();
     const resposta = await handler(pedido());
     assert.equal(resposta.status, 200);
-    assert.deepEqual(await resposta.json(), { preparado: true });
+    assert.deepEqual(await resposta.json(), { preparado: true, link: assinador + "/assinar/" + codigo + "?cv=true" });
     assert.equal(resposta.headers.get("cache-control"), "no-store");
     assert.equal(chamadas.length, 3);
     assert.equal(chamadas[0].opcoes.method, "POST");

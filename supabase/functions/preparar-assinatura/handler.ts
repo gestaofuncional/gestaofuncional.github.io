@@ -117,7 +117,8 @@ export function criarHandler(config: Configuracao) {
             const campo = html.match(/<input\b[^>]*\sid\s*=\s*["']CodigoVerificador["'][^>]*>/i)?.[0];
             const codigo = campo?.match(/\svalue\s*=\s*["']([a-zA-Z0-9]{20,128})["']/i)?.[1];
             if (!codigo) throw new Error();
-            return json(200, { preparado: true });
+            const link = ASSINADOR + "/assinar/" + codigo + "?cv=true";
+            return json(200, { preparado: true, link });
         } catch {
             return json(502, { erro: "Não foi possível confirmar o preparo no Assinador Digital." });
         }

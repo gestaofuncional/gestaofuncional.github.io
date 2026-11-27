@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { aviso, erro, sucesso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=4';
+import { hoje, gerarPdfJustificativa, exibirPdf, limparPdf } from './pdf.js?v=5';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function renumerar(){document.querySelectorAll('#listaHorarios .just-horario').forEach((l,i)=>{l.querySelector('label').textContent=`Horário ${i+1} *`;l.querySelector('button').hidden=i===0;});}
@@ -28,17 +28,17 @@ export function obterDadosJustificativa(){
 async function gerar(e){e.preventDefault();if(ocupado)return;let controles=[];try{
     const dados=obterDadosJustificativa();ocupado=true;controles=[...$('formJustificativa').querySelectorAll('input,textarea,button')];controles.forEach(c=>c.disabled=true);limparPdf();carregando('Gerando PDF...');
     const {data,error}=await supabase.rpc('acesso_autorizado');if(error||data!==true)throw new Error('Sessão inválida. Entre novamente.');
-    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'));fecharAlerta();await sucesso('PDF pronto para baixar, imprimir ou enviar ao Assinador Digital.');
+    const bytes=await gerarPdfJustificativa(dados);exibirPdf(bytes,`Justificativa_${dados.data}_${dados.rf}.pdf`,$('formJustificativa'),{tipo:'justificativa',data:dados.data,usuarioId:perfil.id});fecharAlerta();await sucesso('PDF pronto para baixar, imprimir ou enviar ao Assinador Digital.');
 }catch(e){fecharAlerta();await erro(e.message||'Não foi possível gerar o PDF.');}finally{ocupado=false;controles.forEach(c=>c.disabled=false);}}
 async function iniciar(){try{
     if(!await montarLayout({titulo:'Justificativa',pagina:'justificativa',somenteAdmin:false}))return;
     const {data:{user},error:e}=await supabase.auth.getUser();if(e||!user)throw new Error('Sessão inválida.');
-    const {data,error}=await supabase.from('perfis').select('rf,nome,cargo,ativo').eq('id',user.id).single();if(error||!data?.ativo)throw new Error('Perfil não localizado.');perfil=data;
+    const {data,error}=await supabase.from('perfis').select('id,rf,nome,cargo,ativo').eq('id',user.id).single();if(error||!data?.ativo)throw new Error('Perfil não localizado.');perfil=data;
     $('rf').value=perfil.rf;$('nome').value=perfil.nome;$('cargo').value=perfil.cargo||'';
     $('data').value=hoje();adicionarHorario(false);contador();
     $('adicionarHorario').onclick=()=>adicionarHorario();$('motivo').addEventListener('input',contador);$('anexo').onchange=selecionarAnexo;$('removerAnexo').onclick=removerAnexo;$('limpar').onclick=limpar;
     $('formJustificativa').addEventListener('input',limparPdf);$('formJustificativa').addEventListener('submit',gerar);$('gerarPdf').type='submit';$('gerarPdf').disabled=false;
-    import("./documentos-solicitacoes.js?v=3")
+    import("./documentos-solicitacoes.js?v=4")
         .then(m=>m.iniciarMeusDocumentos("justificativa",user.id))
         .catch(()=>{
             $("docHistorico").hidden=false;
