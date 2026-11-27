@@ -9,6 +9,7 @@
     <title>Início | Sistema de Gestão</title>
 
     <link rel="stylesheet" href="layout.css">
+    <link rel="stylesheet" href="modulos-gestao.css">
 
     <style>
         .perfil-header {
@@ -195,6 +196,7 @@
 
         </section>
 
+        <section class="sg-card"><h2>Meu painel funcional</h2><div id="resumoPessoal"><p class="mg-muted">Carregando seus dados...</p></div></section>
         <h2>Acesso rápido</h2>
 
         <section class="sg-grid">
@@ -405,6 +407,7 @@ async function carregarAvisosDashboard() {
 
                 if (!perfil) return;
                 await carregarAvisosDashboard();
+                import("./dashboard-pessoal.js").then(m=>m.carregarDashboardPessoal(perfil)).catch(()=>{$("resumoPessoal").textContent="Não foi possível carregar o resumo funcional.";});
 
                 const nome =
                     perfil.nome || "Usuário";
