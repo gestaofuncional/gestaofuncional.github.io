@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alterar senha | Sistema de Gestão</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="login-container">
+
+        <div class="login-header">
+
+            <div class="logo">
+                <svg width="36" height="36" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="1.8">
+                    <rect x="4" y="11" width="16" height="11" rx="2"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                    <circle cx="12" cy="16" r="1"/>
+                </svg>
+            </div>
+
+            <h1>Sistema de Gestão</h1>
+            <p>Configuração de segurança</p>
+
+        </div>
+
+        <section class="login-card">
+
+            <h2>Alteração de senha</h2>
+
+            <p class="subtitle">
+                Crie uma nova senha para acessar o sistema.
+            </p>
+
+            <form id="alterarSenhaForm" hidden>
+
+                <div class="form-group">
+
+                    <label for="novaSenha">Nova senha</label>
+
+                    <div class="password-container">
+
+                        <input
+                            type="password"
+                            id="novaSenha"
+                            minlength="8"
+                            maxlength="72"
+                            autocomplete="new-password"
+                            placeholder="Digite sua nova senha"
+                            required>
+
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            data-target="novaSenha">
+                            Mostrar
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="confirmarSenha">
+                        Confirmar nova senha
+                    </label>
+
+                    <div class="password-container">
+
+                        <input
+                            type="password"
+                            id="confirmarSenha"
+                            minlength="8"
+                            maxlength="72"
+                            autocomplete="new-password"
+                            placeholder="Repita a nova senha"
+                            required>
+
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            data-target="confirmarSenha">
+                            Mostrar
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="password-requirements">
+
+                    <p id="requisitoTamanho">
+                        ○ Mínimo de 8 caracteres
+                    </p>
+
+                    <p id="requisitoIgualdade">
+                        ○ As senhas devem coincidir
+                    </p>
+
+                </div>
+
+                <button type="submit" class="btn-login">
+                    Salvar nova senha
+                </button>
+
+            </form>
+
+            <div id="mensagem" role="status">
+                Verificando sessão...
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="register">
+                <a href="#" id="voltar">Voltar ao login</a>
+            </div>
+
+        </section>
+
+        <footer>
+            Sistema de Gestão &bull; Versão 1.0
+        </footer>
+
+    </main>
+
+    <script type="module">
+
+        import { supabase } from "./supabase.js";
+
+        import {
+            alterarSenha,
+            sair
+        } from "./auth.js";
+
+        const formulario =
+            document.getElementById("alterarSenhaForm");
+
+        const nova =
+            document.getElementById("novaSenha");
+
+        const confirmar =
+            document.getElementById("confirmarSenha");
+
+        const mensagem =
+            document.getElementById("mensagem");
+
+        const botao =
+            formulario.querySelector('button[type="submit"]');
+
+        const { data } = await supabase.auth.getUser();
+
+        if (!data.user) {
+
+            window.location.replace("index.html");
+
+        } else {
+
+            formulario.hidden = false;
+            mensagem.textContent = "";
+
+        }
+
+        document.querySelectorAll(".toggle-password")
+            .forEach(botao => {
+
+                botao.addEventListener("click", () => {
+
+                    const campo = document.getElementById(
+                        botao.dataset.target
+                    );
+
+                    const mostrar = campo.type === "password";
+
+                    campo.type = mostrar ? "text" : "password";
+
+                    botao.textContent =
+                        mostrar ? "Ocultar" : "Mostrar";
+
+                });
+
+            });
+
+        function validar() {
+
+            const tamanho = nova.value.length >= 8;
+
+            const iguais =
+                nova.value.length > 0 &&
+                nova.value === confirmar.value;
+
+            const requisito1 =
+                document.getElementById("requisitoTamanho");
+
+            const requisito2 =
+                document.getElementById("requisitoIgualdade");
+
+            requisito1.textContent =
+                (tamanho ? "✓" : "○") +
+                " Mínimo de 8 caracteres";
+
+            requisito2.textContent =
+                (iguais ? "✓" : "○") +
+                " As senhas devem coincidir";
+
+            requisito1.classList.toggle("valido", tamanho);
+
+            requisito2.classList.toggle("valido", iguais);
+
+            return tamanho && iguais;
+
+        }
+
+        nova.addEventListener("input", validar);
+
+        confirmar.addEventListener("input", validar);
+
+        formulario.addEventListener("submit", async event => {
+
+            event.preventDefault();
+
+            if (!validar()) {
+
+                mensagem.className = "erro";
+
+                mensagem.textContent =
+                    "Verifique os requisitos da senha.";
+
+                return;
+
+            }
+
+            botao.disabled = true;
+            botao.textContent = "Salvando...";
+
+            try {
+
+                const resultado = await alterarSenha(
+                    nova.value,
+                    confirmar.value
+                );
+
+                if (!resultado.sucesso) {
+
+                    mensagem.className = "erro";
+                    mensagem.textContent = resultado.mensagem;
+
+                    return;
+
+                }
+
+                nova.value = "";
+                confirmar.value = "";
+
+                alert(
+                    "Senha alterada com sucesso! Entre novamente."
+                );
+
+                await sair();
+
+            } catch {
+
+                mensagem.className = "erro";
+
+                mensagem.textContent =
+                    "Não foi possível alterar a senha.";
+
+            } finally {
+
+                botao.disabled = false;
+                botao.textContent = "Salvar nova senha";
+
+            }
+
+        });
+
+        document.getElementById("voltar")
+            .addEventListener("click", async event => {
+
+                event.preventDefault();
+
+                await sair();
+
+            });
+
+    </script>
+
+</body>
+</html>

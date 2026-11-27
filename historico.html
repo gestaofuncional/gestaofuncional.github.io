@@ -1,0 +1,710 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Histórico | Sistema de Gestão</title>
+
+    <link rel="stylesheet" href="layout.css">
+
+    <style>
+
+        .painel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .painel-header h2 {
+            margin: 0;
+        }
+
+        .filtros {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .filtros label {
+            display: block;
+            font-size: 12px;
+            color: var(--layout-secondary);
+            margin-bottom: 8px;
+        }
+
+        .info {
+            font-size: 13px;
+            color: var(--layout-secondary);
+            margin: 20px 0;
+        }
+
+        .sucesso {
+            color: var(--layout-success);
+        }
+
+        .falha {
+            color: var(--layout-danger);
+        }
+
+        #mensagem {
+            font-size: 13px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 1100px) {
+
+            .filtros {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+        }
+
+        @media (max-width: 750px) {
+
+            .filtros {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body class="sg-body">
+
+    <div id="carregando" class="sg-carregando">
+        Verificando permissões...
+    </div>
+
+    <div id="app" hidden>
+
+        <header class="sg-cabecalho">
+
+            <h1>Histórico de acessos</h1>
+
+            <p>
+                Acompanhe os registros de atividades do sistema.
+            </p>
+
+        </header>
+
+        <section class="sg-grid">
+
+            <div class="sg-indicador">
+
+                <span>Eventos carregados</span>
+
+                <strong id="total">0</strong>
+
+            </div>
+
+            <div class="sg-indicador">
+
+                <span>Logins realizados</span>
+
+                <strong id="logins"
+                        style="color:#4ade80">0</strong>
+
+            </div>
+
+            <div class="sg-indicador">
+
+                <span>Novos cadastros</span>
+
+                <strong id="cadastros"
+                        style="color:#60a5fa">0</strong>
+
+            </div>
+
+            <div class="sg-indicador">
+
+                <span>Ações administrativas</span>
+
+                <strong id="acoes"
+                        style="color:#fbbf24">0</strong>
+
+            </div>
+
+        </section>
+
+        <section class="sg-card">
+
+            <div class="painel-header">
+
+                <h2>Registros de atividades</h2>
+
+                <div>
+
+                    <button
+                        id="atualizar"
+                        class="sg-btn sg-btn-secondary">
+
+                        Atualizar
+
+                    </button>
+
+                    <button
+                        id="exportar"
+                        class="sg-btn sg-btn-success"
+                        disabled>
+
+                        Exportar CSV
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="filtros">
+
+                <div>
+
+                    <label for="pesquisa">
+                        Pesquisar
+                    </label>
+
+                    <input
+                        type="search"
+                        id="pesquisa"
+                        class="sg-input"
+                        placeholder="Nome ou RF...">
+
+                </div>
+
+                <div>
+
+                    <label for="evento">
+                        Tipo de evento
+                    </label>
+
+                    <select
+                        id="evento"
+                        class="sg-select">
+
+                        <option value="">
+                            Todos
+                        </option>
+
+                        <option value="login">
+                            Login
+                        </option>
+
+                        <option value="cadastro">
+                            Cadastro
+                        </option>
+
+                        <option value="alterar_senha">
+                            Alteração de senha
+                        </option>
+
+                        <option value="redefinir_senha">
+                            Redefinição de senha
+                        </option>
+
+                        <option value="bloquear">
+                            Bloqueio
+                        </option>
+
+                        <option value="desbloquear">
+                            Desbloqueio
+                        </option>
+
+                        <option value="promover">
+                            Promoção de administrador
+                        </option>
+
+                        <option value="rebaixar">
+                            Remoção de administrador
+                        </option>
+
+                        <option value="encerrar_sessoes">
+                            Encerramento de sessões
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div>
+
+                    <label for="inicio">
+                        Data inicial
+                    </label>
+
+                    <input
+                        type="date"
+                        class="sg-input"
+                        id="inicio">
+
+                </div>
+
+                <div>
+
+                    <label for="fim">
+                        Data final
+                    </label>
+
+                    <input
+                        type="date"
+                        class="sg-input"
+                        id="fim">
+
+                </div>
+
+            </div>
+
+            <button
+                id="limpar"
+                class="sg-btn sg-btn-secondary">
+
+                Limpar filtros
+
+            </button>
+
+            <p id="quantidade" class="info"></p>
+
+            <div class="sg-tabela-container">
+
+                <table class="sg-tabela">
+
+                    <thead>
+                        <tr>
+                            <th>Data e hora</th>
+                            <th>RF</th>
+                            <th>Nome</th>
+                            <th>Evento</th>
+                            <th>Resultado</th>
+                            <th>Detalhes</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="lista"></tbody>
+
+                </table>
+
+            </div>
+
+            <div id="mensagem" role="status"></div>
+
+        </section>
+
+    </div>
+
+    <script type="module">
+
+        import { montarLayout } from "./layout.js";
+        import { supabase } from "./supabase.js";
+
+        const $ = id => document.getElementById(id);
+
+        let registros = [];
+        let filtrados = [];
+
+        const eventos = {
+
+            login: "Login",
+
+            cadastro: "Cadastro automático",
+
+            alterar_senha: "Alteração de senha",
+
+            redefinir_senha: "Redefinição de senha",
+
+            bloquear: "Usuário bloqueado",
+
+            desbloquear: "Usuário desbloqueado",
+
+            promover: "Promovido a administrador",
+
+            rebaixar: "Permissão administrativa removida",
+
+            encerrar_sessoes: "Sessões encerradas"
+
+        };
+
+        const acoesAdministrativas = [
+
+            "bloquear",
+            "desbloquear",
+            "redefinir_senha",
+            "promover",
+            "rebaixar",
+            "encerrar_sessoes"
+
+        ];
+
+        function normalizar(valor) {
+
+            return String(valor || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+
+        }
+
+        function formatarData(valor) {
+
+            return new Date(valor).toLocaleString(
+                "pt-BR",
+                { timeZone: "America/Sao_Paulo" }
+            );
+
+        }
+
+        function dataLocal(valor) {
+
+            const partes = new Intl.DateTimeFormat(
+                "en-CA",
+                {
+                    timeZone: "America/Sao_Paulo",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit"
+                }
+            ).formatToParts(new Date(valor));
+
+            const obter = tipo =>
+                partes.find(p => p.type === tipo).value;
+
+            return [
+                obter("year"),
+                obter("month"),
+                obter("day")
+            ].join("-");
+
+        }
+
+        function atualizarIndicadores() {
+
+            $("total").textContent =
+                registros.length;
+
+            $("logins").textContent =
+                registros.filter(
+                    r => r.evento === "login" && r.sucesso
+                ).length;
+
+            $("cadastros").textContent =
+                registros.filter(
+                    r => r.evento === "cadastro" && r.sucesso
+                ).length;
+
+            $("acoes").textContent =
+                registros.filter(
+                    r => acoesAdministrativas.includes(r.evento)
+                ).length;
+
+        }
+
+        function adicionarCelula(linha, valor, classe = "") {
+
+            const td = document.createElement("td");
+
+            td.textContent = valor ?? "-";
+
+            td.className = classe;
+
+            linha.appendChild(td);
+
+        }
+
+        function renderizar() {
+
+            const pesquisa = normalizar(
+                $("pesquisa").value.trim()
+            );
+
+            const evento = $("evento").value;
+
+            const inicio = $("inicio").value;
+
+            const fim = $("fim").value;
+
+            filtrados = registros.filter(r => {
+
+                const data = dataLocal(r.criado_em);
+
+                return (
+                    (
+                        normalizar(r.nome).includes(pesquisa) ||
+                        normalizar(r.rf).includes(pesquisa)
+                    ) &&
+                    (!evento || r.evento === evento) &&
+                    (!inicio || data >= inicio) &&
+                    (!fim || data <= fim)
+                );
+
+            });
+
+            $("lista").replaceChildren();
+
+            for (const r of filtrados) {
+
+                const linha =
+                    document.createElement("tr");
+
+                adicionarCelula(
+                    linha,
+                    formatarData(r.criado_em)
+                );
+
+                adicionarCelula(linha, r.rf);
+
+                adicionarCelula(linha, r.nome);
+
+                adicionarCelula(
+                    linha,
+                    eventos[r.evento] || r.evento
+                );
+
+                adicionarCelula(
+                    linha,
+                    r.sucesso ? "Sucesso" : "Falha",
+                    r.sucesso ? "sucesso" : "falha"
+                );
+
+                adicionarCelula(linha, r.detalhes);
+
+                $("lista").appendChild(linha);
+
+            }
+
+            $("quantidade").textContent =
+                `${filtrados.length} de ${registros.length}` +
+                " registros carregados.";
+
+            $("exportar").disabled =
+                filtrados.length === 0;
+
+            if (!filtrados.length) {
+
+                const linha =
+                    document.createElement("tr");
+
+                const td =
+                    document.createElement("td");
+
+                td.colSpan = 6;
+
+                td.textContent =
+                    "Nenhum registro encontrado.";
+
+                td.style.textAlign = "center";
+
+                linha.appendChild(td);
+
+                $("lista").appendChild(linha);
+
+            }
+
+        }
+
+        async function carregarHistorico() {
+
+            $("atualizar").disabled = true;
+
+            $("exportar").disabled = true;
+
+            $("mensagem").className = "";
+
+            $("mensagem").textContent =
+                "Carregando histórico...";
+
+            try {
+
+                const { data, error } =
+                    await supabase.rpc("consultar_historico");
+
+                if (error) throw error;
+
+                registros =
+                    Array.isArray(data) ? data : [];
+
+                atualizarIndicadores();
+
+                renderizar();
+
+                $("mensagem").textContent = "";
+
+            } catch {
+
+                registros = [];
+
+                atualizarIndicadores();
+
+                renderizar();
+
+                $("mensagem").className = "falha";
+
+                $("mensagem").textContent =
+                    "Não foi possível consultar o histórico.";
+
+            } finally {
+
+                $("atualizar").disabled = false;
+
+            }
+
+        }
+
+        function exportarCSV() {
+
+            if (!filtrados.length) return;
+
+            function escapar(valor) {
+
+                let texto = String(valor ?? "");
+
+                if (
+                    /^[\s]*[=+\-@]/.test(texto) ||
+                    /^[\t\r\n]/.test(texto)
+                ) {
+
+                    texto = "'" + texto;
+
+                }
+
+                return '"' +
+                    texto.replace(/"/g, '""') +
+                    '"';
+
+            }
+
+            const linhas = [
+
+                [
+                    "Data e hora",
+                    "RF",
+                    "Nome",
+                    "Evento",
+                    "Resultado",
+                    "Detalhes"
+                ],
+
+                ...filtrados.map(r => [
+
+                    formatarData(r.criado_em),
+
+                    r.rf,
+
+                    r.nome,
+
+                    eventos[r.evento] || r.evento,
+
+                    r.sucesso ? "Sucesso" : "Falha",
+
+                    r.detalhes
+
+                ])
+
+            ];
+
+            const conteudo = linhas.map(
+                linha => linha.map(escapar).join(";")
+            ).join("\r\n");
+
+            const arquivo = new Blob(
+                ["\uFEFF", conteudo],
+                { type: "text/csv;charset=utf-8" }
+            );
+
+            const url = URL.createObjectURL(arquivo);
+
+            const link = document.createElement("a");
+
+            link.href = url;
+
+            link.download =
+                "historico-acessos-" +
+                dataLocal(new Date()) +
+                ".csv";
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            link.remove();
+
+            setTimeout(
+                () => URL.revokeObjectURL(url),
+                1000
+            );
+
+        }
+
+        $("pesquisa").addEventListener(
+            "input", renderizar
+        );
+
+        ["evento", "inicio", "fim"].forEach(id => {
+
+            $(id).addEventListener("change", renderizar);
+
+        });
+
+        $("limpar").addEventListener("click", () => {
+
+            $("pesquisa").value = "";
+            $("evento").value = "";
+            $("inicio").value = "";
+            $("fim").value = "";
+
+            renderizar();
+
+        });
+
+        $("atualizar").addEventListener(
+            "click", carregarHistorico
+        );
+
+        $("exportar").addEventListener(
+            "click", exportarCSV
+        );
+
+        async function iniciar() {
+
+            try {
+
+                const perfil = await montarLayout({
+
+                    titulo: "Histórico de acessos",
+
+                    pagina: "historico",
+
+                    somenteAdmin: true
+
+                });
+
+                if (!perfil) return;
+
+                await carregarHistorico();
+
+            } catch {
+
+                $("app").hidden = true;
+
+                $("carregando").hidden = false;
+
+                $("carregando").textContent =
+                    "Erro ao carregar o histórico.";
+
+            }
+
+        }
+
+        iniciar();
+
+    </script>
+
+</body>
+</html>

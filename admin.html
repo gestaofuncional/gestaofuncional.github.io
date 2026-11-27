@@ -1,0 +1,656 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Usuários | Sistema de Gestão</title>
+    
+    <link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="layout.css">
+
+    <style>
+        .acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .acoes .sg-btn {
+            font-size: 11px;
+            padding: 8px 10px;
+        }
+
+        .pesquisa {
+            margin-bottom: 22px;
+        }
+
+        .protegido {
+            color: var(--layout-warning);
+            font-size: 12px;
+        }
+
+        .sg-tabela {
+            min-width: 1000px;
+        }
+
+        #mensagem {
+            margin-top: 18px;
+            font-size: 14px;
+        }
+
+        .sucesso {
+            color: var(--layout-success);
+        }
+
+        .erro {
+            color: var(--layout-danger);
+        }
+    </style>
+</head>
+
+<body class="sg-body">
+
+    <div id="carregando" class="sg-carregando">
+        Verificando permissões administrativas...
+    </div>
+
+    <div id="app" hidden>
+
+        <header class="sg-cabecalho">
+
+            <h1>Gerenciamento de usuários</h1>
+
+            <p>
+                Controle de contas, acessos e permissões.
+            </p>
+
+        </header>
+
+        <section class="sg-grid">
+
+            <div class="sg-indicador">
+                <span>Total de usuários</span>
+                <strong id="total">0</strong>
+            </div>
+
+            <div class="sg-indicador">
+                <span>Administradores</span>
+                <strong id="admins"
+                        style="color:#60a5fa">0</strong>
+            </div>
+
+            <div class="sg-indicador">
+                <span>Bloqueados</span>
+                <strong id="bloqueados"
+                        style="color:#f87171">0</strong>
+            </div>
+
+            <div class="sg-indicador">
+                <span>Primeiro acesso</span>
+                <strong id="pendentes"
+                        style="color:#fbbf24">0</strong>
+            </div>
+
+        </section>
+
+        <section class="sg-card">
+
+            <h2>Usuários cadastrados</h2>
+
+            <input
+                type="search"
+                id="pesquisa"
+                class="sg-input pesquisa"
+                placeholder="Pesquisar por nome, RF, cargo ou secretaria...">
+
+            <div class="sg-tabela-container">
+
+                <table class="sg-tabela">
+
+                    <thead>
+                        <tr>
+                            <th>RF</th>
+                            <th>Nome</th>
+                            <th>Cargo</th>
+                            <th>Secretaria</th>
+                            <th>Permissão</th>
+                            <th>Status</th>
+                            <th>Último acesso</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="lista"></tbody>
+
+                </table>
+
+            </div>
+
+            <div id="mensagem" role="status"></div>
+
+        </section>
+
+    </div>
+
+    <script type="module">
+
+        import { montarLayout } from "./layout.js";
+        import { supabase } from "./supabase.js";
+        import {
+    confirmar,
+    sucesso,
+    erro as mostrarErro,
+    notificacao,
+    informacao,
+    carregando,
+    fecharAlerta
+} from "./alertas.js";
+
+        const $ = id => document.getElementById(id);
+
+        let usuarios = [];
+        let operador = null;
+        let processando = false;
+
+        const permissoes = {
+            superadmin: "Administrador principal",
+            admin: "Administrador",
+            usuario: "Usuário comum"
+        };
+
+        function mensagem(texto, erro = false) {
+
+            $("mensagem").textContent = texto;
+
+            $("mensagem").className =
+                erro ? "erro" : "sucesso";
+
+        }
+
+        async function chamarFuncao(nome, body) {
+
+            const { data, error } =
+                await supabase.functions.invoke(
+                    nome,
+                    { body }
+                );
+
+            if (error) {
+
+                let texto =
+                    "Não foi possível concluir a operação.";
+
+                try {
+
+                    const resposta =
+                        await error.context.json();
+
+                    texto = resposta.mensagem || texto;
+
+                } catch {}
+
+                throw new Error(texto);
+
+            }
+
+            if (!data?.sucesso) {
+
+                throw new Error(
+                    data?.mensagem || "Operação recusada."
+                );
+
+            }
+
+            return data;
+
+        }
+
+        function adicionarCelula(linha, texto) {
+
+            const td = document.createElement("td");
+
+            td.textContent = texto || "-";
+
+            linha.appendChild(td);
+
+            return td;
+
+        }
+
+        function criarBotao(texto, cor, acao, usuario) {
+
+            const botao = document.createElement("button");
+
+            botao.className = `sg-btn sg-btn-${cor}`;
+
+            botao.textContent = texto;
+
+            botao.disabled = processando;
+
+            botao.addEventListener("click", () => {
+
+                executarAcao(acao, usuario);
+
+            });
+
+            return botao;
+
+        }
+
+        function criarAcoes(usuario) {
+
+            const div = document.createElement("div");
+
+            div.className = "acoes";
+
+            const protegido =
+                usuario.rf === "51112" ||
+                usuario.perfil === "superadmin" ||
+                usuario.id === operador.id ||
+                (
+                    operador.perfil === "admin" &&
+                    usuario.perfil !== "usuario"
+                );
+
+            if (protegido) {
+
+                const texto =
+                    document.createElement("span");
+
+                texto.className = "protegido";
+
+                texto.textContent = "Conta protegida";
+
+                div.appendChild(texto);
+
+                return div;
+
+            }
+
+            div.appendChild(
+                criarBotao(
+                    usuario.ativo
+                        ? "Bloquear"
+                        : "Desbloquear",
+
+                    usuario.ativo
+                        ? "danger"
+                        : "success",
+
+                    usuario.ativo
+                        ? "bloquear"
+                        : "desbloquear",
+
+                    usuario
+                )
+            );
+
+            div.appendChild(
+                criarBotao(
+                    "Redefinir senha",
+                    "warning",
+                    "redefinir_senha",
+                    usuario
+                )
+            );
+
+            div.appendChild(
+                criarBotao(
+                    "Encerrar sessões",
+                    "secondary",
+                    "encerrar_sessoes",
+                    usuario
+                )
+            );
+
+            if (operador.perfil === "superadmin") {
+
+                div.appendChild(
+                    criarBotao(
+                        usuario.perfil === "admin"
+                            ? "Remover admin"
+                            : "Tornar admin",
+
+                        "primary",
+
+                        usuario.perfil === "admin"
+                            ? "rebaixar"
+                            : "promover",
+
+                        usuario
+                    )
+                );
+
+            }
+
+            return div;
+
+        }
+
+        function normalizar(valor) {
+
+            return String(valor || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+
+        }
+
+        function renderizar() {
+
+            const termo = normalizar(
+                $("pesquisa").value.trim()
+            );
+
+            $("lista").replaceChildren();
+
+            const filtrados = usuarios.filter(u =>
+
+                [
+                    u.rf,
+                    u.nome,
+                    u.cargo,
+                    u.secretaria
+                ].some(valor =>
+                    normalizar(valor).includes(termo)
+                )
+
+            );
+
+            for (const u of filtrados) {
+
+                const linha =
+                    document.createElement("tr");
+
+                adicionarCelula(linha, u.rf);
+
+                adicionarCelula(linha, u.nome);
+
+                adicionarCelula(linha, u.cargo);
+
+                adicionarCelula(linha, u.secretaria);
+
+                adicionarCelula(
+                    linha,
+                    permissoes[u.perfil] || "Usuário"
+                );
+
+                const tdStatus =
+                    document.createElement("td");
+
+                const status =
+                    document.createElement("span");
+
+                status.className = "sg-status";
+
+                if (!u.ativo) {
+
+                    status.textContent = "Bloqueado";
+
+                    status.classList.add(
+                        "sg-status-bloqueado"
+                    );
+
+                } else if (u.primeiro_acesso) {
+
+                    status.textContent = "Alterar senha";
+
+                    status.classList.add(
+                        "sg-status-pendente"
+                    );
+
+                } else {
+
+                    status.textContent = "Ativo";
+
+                    status.classList.add(
+                        "sg-status-ativo"
+                    );
+
+                }
+
+                tdStatus.appendChild(status);
+
+                linha.appendChild(tdStatus);
+
+                adicionarCelula(
+                    linha,
+                    u.ultimo_acesso
+                        ? new Date(u.ultimo_acesso)
+                            .toLocaleString(
+                                "pt-BR",
+                                {
+                                    timeZone:
+                                        "America/Sao_Paulo"
+                                }
+                            )
+                        : "Nunca"
+                );
+
+                const tdAcoes =
+                    document.createElement("td");
+
+                tdAcoes.appendChild(criarAcoes(u));
+
+                linha.appendChild(tdAcoes);
+
+                $("lista").appendChild(linha);
+
+            }
+
+            if (!filtrados.length) {
+
+                const linha =
+                    document.createElement("tr");
+
+                const td =
+                    document.createElement("td");
+
+                td.colSpan = 8;
+
+                td.textContent =
+                    "Nenhum usuário encontrado.";
+
+                td.style.textAlign = "center";
+
+                linha.appendChild(td);
+
+                $("lista").appendChild(linha);
+
+            }
+
+        }
+
+        function atualizarIndicadores() {
+
+            $("total").textContent =
+                usuarios.length;
+
+            $("admins").textContent =
+                usuarios.filter(
+                    u => ["admin", "superadmin"]
+                        .includes(u.perfil)
+                ).length;
+
+            $("bloqueados").textContent =
+                usuarios.filter(
+                    u => !u.ativo
+                ).length;
+
+            $("pendentes").textContent =
+                usuarios.filter(
+                    u => u.primeiro_acesso
+                ).length;
+
+        }
+
+        async function carregarUsuarios() {
+
+            const resultado = await chamarFuncao(
+                "admin-usuarios",
+                {}
+            );
+
+            usuarios = resultado.usuarios;
+
+            atualizarIndicadores();
+
+            renderizar();
+
+        }
+
+        
+async function executarAcao(acao, usuario) {
+
+    if (processando) return;
+
+    const descricoes = {
+
+        bloquear: "Bloquear usuário?",
+
+        desbloquear: "Desbloquear usuário?",
+
+        redefinir_senha: "Redefinir senha?",
+
+        promover: "Promover a administrador?",
+
+        rebaixar: "Remover administrador?",
+
+        encerrar_sessoes: "Encerrar sessões?"
+
+    };
+
+    const confirmado = await confirmar(
+
+        descricoes[acao],
+
+        `${usuario.nome} — RF: ${usuario.rf}`,
+
+        ["bloquear", "rebaixar"].includes(acao)
+
+    );
+
+    if (!confirmado || processando) return;
+
+    processando = true;
+
+    renderizar();
+
+    carregando("Executando operação administrativa.");
+
+    try {
+
+        const resultado = await chamarFuncao(
+
+            "admin-acoes",
+
+            {
+                rf: usuario.rf,
+                acao
+            }
+
+        );
+
+        fecharAlerta();
+
+        if (resultado.senha_temporaria) {
+
+            await informacao(
+
+                "Senha temporária: " +
+                resultado.senha_temporaria +
+                "\n\nEntregue ao funcionário. " +
+                "A alteração será obrigatória.",
+
+                "Senha redefinida"
+
+            );
+
+        } else {
+
+            await sucesso(resultado.mensagem);
+
+        }
+
+        if (resultado.historico_registrado === false) {
+
+            notificacao(
+                "Histórico não registrado.",
+                "warning"
+            );
+
+        }
+
+        try {
+
+            await carregarUsuarios();
+
+        } catch {
+
+            await mostrarErro(
+                "Operação realizada, mas não foi possível atualizar a lista."
+            );
+
+        }
+
+    } catch (e) {
+
+        fecharAlerta();
+
+        await mostrarErro(e.message);
+
+    } finally {
+
+        processando = false;
+
+        renderizar();
+
+    }
+
+}
+
+
+        async function iniciar() {
+
+            try {
+
+                operador = await montarLayout({
+
+                    titulo: "Administração",
+
+                    pagina: "usuarios",
+
+                    somenteAdmin: true
+
+                });
+
+                if (!operador) return;
+
+                await carregarUsuarios();
+
+            } catch (erro) {
+
+                $("app").hidden = true;
+
+                $("carregando").hidden = false;
+
+                $("carregando").textContent =
+                    "Erro ao carregar usuários: " +
+                    erro.message;
+
+            }
+
+        }
+
+        iniciar();
+
+    </script>
+
+</body>
+</html>

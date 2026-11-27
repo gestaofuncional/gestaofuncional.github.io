@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Falta Abonada | Sistema de Gestão</title>
+
+    <link rel="stylesheet" href="layout.css">
+    <link rel="stylesheet" href="documentos-solicitacoes.css">
+
+    <style>
+
+        .formulario {
+            max-width: 1000px;
+        }
+
+        .form-grupo {
+            margin-bottom: 22px;
+        }
+
+        .form-grupo label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 9px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-grid-datas {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .form-acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-top: 1px solid var(--layout-border);
+            padding-top: 22px;
+            margin-top: 20px;
+        }
+
+        .orientacao {
+            padding: 16px;
+            border: 1px solid var(--layout-border);
+            border-left: 4px solid #22c55e;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            background: var(--layout-card);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        input[readonly] {
+            opacity: .8;
+            cursor: default;
+        }
+
+        .titulo-secao {
+            margin-bottom: 22px;
+        }
+
+        @media (max-width: 750px) {
+
+            .form-grid,
+            .form-grid-datas {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .form-acoes button {
+                width: 100%;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body class="sg-body">
+
+    <div id="carregando" class="sg-carregando">
+
+        Verificando sessão...
+
+    </div>
+
+    <div id="app" hidden>
+
+        <header class="sg-cabecalho">
+
+            <h1>Falta Abonada</h1>
+
+            <p>
+                Emissão e registro de requerimentos
+                de falta abonada.
+            </p>
+
+        </header>
+
+        <div class="formulario">
+
+            <div class="orientacao">
+
+                Seus dados funcionais foram preenchidos
+                automaticamente com base no seu cadastro.
+
+                Informe apenas a data da falta abonada.
+
+            </div>
+
+            <section class="sg-card">
+
+                <h2 class="titulo-secao">
+                    Dados do funcionário
+                </h2>
+
+                <form id="formAbonada">
+
+                    <div class="form-grupo">
+
+                        <label for="registro">
+                            Registro Funcional (RF)
+                        </label>
+
+                        <input
+                            type="text"
+                            id="registro"
+                            class="sg-input"
+                            readonly>
+
+                    </div>
+
+                    <div class="form-grupo">
+
+                        <label for="nome">
+                            Nome completo
+                        </label>
+
+                        <input
+                            type="text"
+                            id="nome"
+                            class="sg-input"
+                            readonly>
+
+                    </div>
+
+                    <div class="form-grid">
+
+                        <div class="form-grupo">
+
+                            <label for="cargo">
+                                Cargo
+                            </label>
+
+                            <input
+                                type="text"
+                                id="cargo"
+                                class="sg-input"
+                                readonly>
+
+                        </div>
+
+                        <div class="form-grupo">
+
+                            <label for="secretaria">
+                                Secretaria
+                            </label>
+
+                            <input
+                                type="text"
+                                id="secretaria"
+                                class="sg-input"
+                                readonly>
+
+                        </div>
+
+                    </div>
+
+                    <h2 class="titulo-secao">
+                        Dados do requerimento
+                    </h2>
+
+                    <div class="form-grid-datas">
+
+                        <div class="form-grupo">
+
+                            <label for="dataAbonada">
+                                Data da falta abonada
+                            </label>
+
+                            <input
+                                type="date"
+                                id="dataAbonada"
+                                class="sg-input"
+                                required>
+
+                        </div>
+
+                        <div class="form-grupo">
+
+                            <label for="dataDocumento">
+                                Data do documento
+                            </label>
+
+                            <input
+                                type="date"
+                                id="dataDocumento"
+                                class="sg-input"
+                                readonly>
+
+                        </div>
+
+                        <div class="form-grupo">
+
+                            <label for="dataAnalise">
+                                Data da análise
+                            </label>
+
+                            <input
+                                type="date"
+                                id="dataAnalise"
+                                class="sg-input"
+                                readonly>
+
+                        </div>
+
+                    </div>
+
+                    <div class="form-acoes">
+
+                        <button
+                            type="submit"
+                            id="registrar"
+                            class="sg-btn sg-btn-success">
+
+                            Registrar abonada
+
+                        </button>
+
+                        <button
+                            type="button"
+                            id="gerarPdf"
+                            class="sg-btn"
+                            disabled>
+
+                            Gerar PDF
+
+                        </button>
+
+                        <button
+                            type="button"
+                            id="limpar"
+                            class="sg-btn sg-btn-secondary">
+
+                            Limpar data
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </section>
+
+            <section class="sg-card" id="docEnvio" hidden>
+                <h2>Enviar PDF para análise</h2>
+                <p class="doc-muted">Selecione o PDF final, já preenchido e assinado, se necessário. Apenas gerar o documento não o encaminha para aprovação.</p>
+                <form id="docForm" class="doc-form">
+                    <label for="docData">Data de referência do documento<input type="date" id="docData" class="sg-input" required></label>
+                    <label for="docArquivo">Selecionar arquivo PDF<input type="file" id="docArquivo" class="sg-input" accept=".pdf,application/pdf" required></label>
+                    <p class="doc-muted">Somente PDF, até 10 MB. O arquivo ficará disponível para você e para a administração autorizada.</p>
+                    <div class="doc-acoes"><button type="submit" id="docEnviar" class="sg-btn sg-btn-success">Enviar para análise</button></div>
+                </form>
+                <hr style="border:0;border-top:1px solid var(--layout-border);margin:24px 0">
+                <h2>Meus documentos enviados</h2>
+                <button type="button" id="docAtualizar" class="sg-btn sg-btn-secondary">Atualizar</button>
+                <p id="docStatus" class="doc-muted" role="status"></p><div id="docLista"></div>
+                <div class="doc-acoes"><button type="button" id="docAnterior" class="sg-btn sg-btn-secondary" disabled>Anterior</button><button type="button" id="docProxima" class="sg-btn sg-btn-secondary" disabled>Próxima</button></div>
+            </section>
+
+        </div>
+
+    </div>
+
+    <script type="module"
+            src="./falta-abonada.js?v=2">
+    </script>
+
+</body>
+
+</html>
