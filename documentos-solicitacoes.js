@@ -1,3 +1,4 @@
+import { linkAssinaturaValido, acoesAssinatura } from "./assinatura-digital.js";
 import { supabase } from "./supabase.js";
 import { confirmar, sucesso, erro, Alerta } from "./alertas.js";
 
@@ -32,7 +33,7 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
         if(reset)pagina=0;
         const v=++versao;status.textContent="Carregando...";anterior.disabled=true;proxima.disabled=true;
         try{
-            let q=supabase.from("solicitacoes_documentos").select("id,usuario_id,tipo,rf,nome,secretaria,data_referencia,arquivo,status,motivo_decisao,criado_em,atualizado_em",{count:"exact"});
+            let q=supabase.from("solicitacoes_documentos").select("id,usuario_id,tipo,rf,nome,secretaria,data_referencia,arquivo,assinatura_link,status,motivo_decisao,criado_em,atualizado_em",{count:"exact"});
             q=carregarConsulta(q);
             const {data,error,count}=await q.order("criado_em",{ascending:false}).order("id",{ascending:false}).range(pagina*tamanho,(pagina+1)*tamanho-1);
             if(v!==versao)return;
@@ -47,7 +48,9 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                 info.append(el("p","doc-muted","Enviado em "+fmtHora(r.criado_em)));
                 const etiqueta=el("span","doc-status doc-"+r.status,ESTADOS[r.status]||r.status);topo.append(info,etiqueta);card.append(topo);
                 if(r.motivo_decisao)card.append(el("p","doc-motivo","Motivo: "+r.motivo_decisao));
-                const acoes=el("div","doc-acoes");const baixarBtn=btn("Baixar PDF",()=>baixar(r,baixarBtn));acoes.append(baixarBtn);
+                const acoes=el("div","doc-acoes");const baixarBtn=btn("Baixar PDF",()=>baixar(r,baixarBtn));acoes.append(baixarBtn,...acoesAssinatura(r.assinatura_link));
+                if(r.assinatura_link)card.append(el("p","doc-muted","Link de assinatura informado pelo funcionário (não verificado)."));
+                if(!admin&&["pendente","em_analise"].includes(r.status))acoes.append(btn(r.assinatura_link?"Alterar link de assinatura":"Adicionar link de assinatura",()=>vincular(r)));
                 if(admin&&["pendente","em_analise"].includes(r.status)){
                     for(const [estado,label] of [["em_analise","Analisar"],["aprovado","Aprovar"],["recusado","Recusar"]]){
                         if(estado===r.status)continue;
@@ -58,6 +61,15 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                 card.append(acoes);raiz.append(card);
             }
         }catch(e){if(v===versao){raiz.replaceChildren();status.textContent="Não foi possível consultar: "+e.message;}}
+    }
+    async function vincular(r){
+        if(admin||ocupado)return;ocupado=true;
+        try{
+            const resp=await Alerta.fire({titleText:"Link de assinatura",input:"url",inputValue:r.assinatura_link||"",inputAttributes:{maxlength:"250"},showCancelButton:true,confirmButtonText:"Salvar link",cancelButtonText:"Cancelar",inputValidator:v=>linkAssinaturaValido(v)?undefined:"Cole o link individual de compartilhamento do assinador oficial."});
+            if(!resp.isConfirmed)return;
+            const {error}=await supabase.rpc("vincular_assinatura_documento",{p_id:r.id,p_link:resp.value.trim(),p_revisao:r.atualizado_em});
+            if(error)throw error;await sucesso("Link vinculado à solicitação.");await carregar();
+        }catch(e){await erro(e.message);}finally{ocupado=false;}
     }
     async function decidir(r,estado,b){
         if(!admin||ocupado)return;ocupado=true;b.disabled=true;
@@ -80,7 +92,7 @@ export async function iniciarEnvioDocumento(tipo,campoData){
     const raiz=$("docEnvio");if(!raiz)return;
     const {data:{user},error}=await supabase.auth.getUser();
     if(error||!user){raiz.textContent="Sessão inválida. Entre novamente.";return;}
-    const campo=$("docData"),arquivo=$("docArquivo"),enviar=$("docEnviar"),form=$("docForm");
+    const campo=$("docData"),arquivo=$("docArquivo"),enviar=$("docEnviar"),form=$("docForm"),link=$("docLinkAssinatura");
     campo.value=$(campoData).value||"";
     $(campoData).addEventListener("input",()=>{if(!enviar.disabled)campo.value=$(campoData).value;});
     const atualizar=listaDocumentos({raiz:$("docLista"),status:$("docStatus"),anterior:$("docAnterior"),proxima:$("docProxima"),carregarConsulta:q=>q.eq("usuario_id",user.id).eq("tipo",tipo)});
@@ -88,22 +100,23 @@ export async function iniciarEnvioDocumento(tipo,campoData){
     let ocupado=false;
     form.onsubmit=async e=>{
         e.preventDefault();if(ocupado)return;
-        const data=campo.value,f=arquivo.files[0];let path=null;ocupado=true;enviar.disabled=true;campo.disabled=true;arquivo.disabled=true;
+        const data=campo.value,f=arquivo.files[0],assinatura=link.value.trim();let path=null;ocupado=true;enviar.disabled=true;campo.disabled=true;arquivo.disabled=true;link.disabled=true;
         try{
             if(!data)throw Error("Informe a data a que o PDF se refere.");
             await validarPDF(f);
+            if(assinatura&&!linkAssinaturaValido(assinatura))throw Error("Cole o link individual de compartilhamento do Assinador Digital oficial.");
             if(!await confirmar("Enviar documento para análise?",TIPOS[tipo]+" — "+fmt(data)))return;
             path=user.id+"/"+crypto.randomUUID()+".pdf";
             const {error:uploadError}=await supabase.storage.from(BUCKET).upload(path,f,{contentType:"application/pdf",upsert:false});
             if(uploadError)throw uploadError;
-            const {error:rpcError}=await supabase.rpc("enviar_documento_solicitacao",{p_tipo:tipo,p_data:data,p_arquivo:path});
+            const {error:rpcError}=await supabase.rpc("enviar_documento_com_assinatura",{p_tipo:tipo,p_data:data,p_arquivo:path,p_link:assinatura||null});
             if(rpcError)throw rpcError;
-            path=null;arquivo.value="";await sucesso("PDF enviado para análise.");await atualizar(true);
+            path=null;arquivo.value="";link.value="";await sucesso("PDF enviado para análise.");await atualizar(true);
         }catch(e){
             if(path){try{await supabase.storage.from(BUCKET).remove([path]);}catch{}}
             await erro(e.message||"Não foi possível enviar o documento.");
             await atualizar(true);
-        }finally{ocupado=false;enviar.disabled=false;campo.disabled=false;arquivo.disabled=false;}
+        }finally{ocupado=false;enviar.disabled=false;campo.disabled=false;arquivo.disabled=false;link.disabled=false;}
     };
     raiz.hidden=false;await atualizar();
 }

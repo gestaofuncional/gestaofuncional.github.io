@@ -1,7 +1,7 @@
 import { montarLayout } from './layout.js';
 import { supabase } from './supabase.js';
 import { confirmar, sucesso, erro, aviso, carregando, fecharAlerta } from './alertas.js';
-import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js';
+import { hoje, formatarData, gerarPdfAbonada, exibirPdf, limparPdf } from './pdf.js?v=2';
 const $=id=>document.getElementById(id);
 let perfil, ocupado=false;
 function datas(){ $('dataDocumento').value=hoje();$('dataAnalise').value=hoje(); }
@@ -41,6 +41,6 @@ async function iniciar(){try{
     $('gerarPdf').type='button';$('gerarPdf').addEventListener('click',()=>executar(true));$('gerarPdf').disabled=false;
     $('limpar').addEventListener('click',()=>{if(!ocupado){$('dataAbonada').value='';datas();limparPdf();}});
     $('dataAbonada').addEventListener('input',limparPdf);
-    import("./documentos-solicitacoes.js").then(m=>m.iniciarEnvioDocumento("abonada","dataAbonada")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
+    import("./documentos-solicitacoes.js?v=2").then(m=>m.iniciarEnvioDocumento("abonada","dataAbonada")).catch(e=>{const painel=$("docEnvio");painel.hidden=false;painel.textContent="Não foi possível carregar o envio de documentos: "+e.message;});
 }catch(e){$('app').hidden=true;$('carregando').hidden=false;$('carregando').textContent=e.message;}}
 iniciar();

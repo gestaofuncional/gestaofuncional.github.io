@@ -12,7 +12,7 @@
     <title>Falta Abonada | Sistema de Gestão</title>
 
     <link rel="stylesheet" href="layout.css">
-    <link rel="stylesheet" href="documentos-solicitacoes.css">
+    <link rel="stylesheet" href="documentos-solicitacoes.css?v=2">
 
     <style>
 
@@ -281,6 +281,7 @@
                 <p class="doc-muted">Selecione o PDF final, já preenchido e assinado, se necessário. Apenas gerar o documento não o encaminha para aprovação.</p>
                 <form id="docForm" class="doc-form">
                     <label for="docData">Data de referência do documento<input type="date" id="docData" class="sg-input" required></label>
+                    <div class="doc-assinatura"><h3>Assinatura digital (opcional)</h3><p class="doc-muted">Baixe o PDF gerado, abra o assinador oficial, adicione o arquivo e prepare a assinatura. Use o botão de compartilhar do assinador e copie o link individual do documento. Não compartilhe links com pessoas não autorizadas.</p><div class="doc-acoes"><a href="https://assinadordigitalexterno.praiagrande.sp.gov.br/" target="_blank" rel="noopener noreferrer" class="sg-btn sg-btn-secondary">Abrir Assinador Digital</a></div><label for="docLinkAssinatura">Link de compartilhamento (opcional)<input id="docLinkAssinatura" type="url" class="sg-input" maxlength="250" placeholder="https://assinadordigitalexterno.../assinar/..."></label><p class="doc-muted">O link não comprova que o documento foi assinado. Se necessário, baixe o PDF original assinado antes de enviá-lo. Documentos sem assinatura podem expirar após 15 dias.</p></div>
                     <label for="docArquivo">Selecionar arquivo PDF<input type="file" id="docArquivo" class="sg-input" accept=".pdf,application/pdf" required></label>
                     <p class="doc-muted">Somente PDF, até 10 MB. O arquivo ficará disponível para você e para a administração autorizada.</p>
                     <div class="doc-acoes"><button type="submit" id="docEnviar" class="sg-btn sg-btn-success">Enviar para análise</button></div>
@@ -297,7 +298,7 @@
     </div>
 
     <script type="module"
-            src="./falta-abonada.js?v=2">
+            src="./falta-abonada.js?v=3">
     </script>
 
 </body>

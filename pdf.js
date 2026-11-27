@@ -1,3 +1,4 @@
+import { abrirAssinador } from "./assinatura-digital.js";
 import { PDFDocument, StandardFonts, rgb } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 export function hoje() {
@@ -83,6 +84,8 @@ export function exibirPdf(bytes,nome,form){
     caixa.style.cssText='display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;';
     const download=document.createElement('a');download.href=url;download.download=nome;download.className='sg-btn';download.textContent='Baixar PDF';
     const abrir=document.createElement('a');abrir.href=url;abrir.target='_blank';abrir.rel='noopener noreferrer';abrir.className='sg-btn sg-btn-secondary';abrir.textContent='Abrir PDF para imprimir';
-    caixa.append(download,abrir);form.append(caixa);
+    const assinar=document.createElement('button');assinar.type='button';assinar.className='sg-btn sg-btn-success';assinar.textContent='Baixar PDF e abrir assinador';assinar.onclick=()=>{download.click();abrirAssinador();};
+    const orientacao=document.createElement('p');orientacao.className='doc-muted';orientacao.style.flexBasis='100%';orientacao.textContent='No assinador, adicione o PDF baixado, prepare a assinatura e copie o link de compartilhamento. Depois, envie o PDF final e o link para análise.';
+    caixa.append(download,abrir,assinar,orientacao);form.append(caixa);
 }
 export function limparPdf(){const el=document.getElementById('resultadoPdf');if(el){URL.revokeObjectURL(el.dataset.url);el.remove();}}
