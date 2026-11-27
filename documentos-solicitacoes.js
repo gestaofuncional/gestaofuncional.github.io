@@ -23,6 +23,21 @@ async function baixar(r,b){
     }catch(e){await erro(e.message);}finally{b.disabled=false;}
 }
 
+function painelLinkAssinatura(url) {
+    const [abrir, copiar] = acoesAssinatura(url);
+    if (!abrir) return null;
+
+    abrir.className = "doc-compartilhamento-endereco";
+    abrir.setAttribute("aria-label", "Abrir link de assinatura");
+    abrir.textContent = url.trim();
+
+    const painel = el("div", "doc-compartilhamento");
+    const linha = el("div", "doc-compartilhamento-linha");
+    linha.append(abrir, copiar);
+    painel.append(el("p", "doc-compartilhamento-titulo", "Link de assinatura"), linha);
+    return painel;
+}
+
 function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=false}){
     let pagina=0,versao=0,ocupado=false;const tamanho=30;
     async function carregar(reset=false){
@@ -44,10 +59,21 @@ function listaDocumentos({raiz,status,anterior,proxima,carregarConsulta,admin=fa
                 info.append(el("p","doc-muted","Enviado em "+fmtHora(r.criado_em)));
                 const etiqueta=el("span","doc-status doc-"+r.status,ESTADOS[r.status]||r.status);topo.append(info,etiqueta);card.append(topo);
                 if(r.motivo_decisao)card.append(el("p","doc-motivo","Motivo: "+r.motivo_decisao));
-                const acoes=el("div","doc-acoes");const baixarBtn=btn("Baixar PDF",()=>baixar(r,baixarBtn));acoes.append(baixarBtn,...acoesAssinatura(r.assinatura_link));
-                if(admin&&r.assinatura_link)card.append(el("p","doc-muted","Confira o PDF e as assinaturas antes de aprovar."));
-                if(!admin&&["pendente","em_analise"].includes(r.status))acoes.append(btn(r.assinatura_link?"Alterar link de assinatura":"Adicionar link de assinatura",()=>vincular(r)));
-                if(admin&&["pendente","em_analise"].includes(r.status)){
+                const aguardandoDecisao = ["pendente", "em_analise"].includes(r.status);
+                const acoes = el("div", "doc-acoes");
+                const baixarBtn = btn("Baixar PDF", () => baixar(r, baixarBtn));
+                acoes.append(baixarBtn);
+                if (admin) {
+                    const assinatura = painelLinkAssinatura(r.assinatura_link);
+                    if (assinatura) card.append(assinatura);
+                } else {
+                    acoes.append(...acoesAssinatura(r.assinatura_link));
+                    if (aguardandoDecisao) {
+                        const rotulo = r.assinatura_link ? "Alterar link de assinatura" : "Adicionar link de assinatura";
+                        acoes.append(btn(rotulo, () => vincular(r)));
+                    }
+                }
+                if(admin&&aguardandoDecisao){
                     for(const [estado,label] of [["em_analise","Analisar"],["aprovado","Aprovar"],["recusado","Recusar"]]){
                         if(estado===r.status)continue;
                         const b=btn(label,()=>decidir(r,estado,b),estado==="aprovado"?"sg-btn sg-btn-success":estado==="recusado"?"sg-btn sg-btn-danger":"sg-btn sg-btn-secondary");
